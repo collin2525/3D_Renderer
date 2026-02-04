@@ -2,6 +2,7 @@
 #include "string.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 object3d objs[10];
 int obj_count = 0;
@@ -105,6 +106,48 @@ int* get_edges(int* out_count, char* object_name) {
     }
 
     return edges_array;
+}
+
+void rotate_cube_x(double angle) {
+    double center_x = 0.0, center_y = 0.0, center_z = 50.0;
+    for (int i = 0; i < objs[0].vertex_count; i++) {
+        double x = objs[0].vertices[i].x - center_x;
+        double y = objs[0].vertices[i].y - center_y;
+        double z = objs[0].vertices[i].z - center_z;
+        double new_y = y * cos(angle) - z * sin(angle);
+        double new_z = y * sin(angle) + z * cos(angle);
+        objs[0].vertices[i].x = x + center_x;
+        objs[0].vertices[i].y = new_y + center_y;
+        objs[0].vertices[i].z = new_z + center_z;
+    }
+}
+
+void rotate_cube_y(double angle) {
+    double center_x = 0.0, center_y = 0.0, center_z = 50.0;
+    for (int i = 0; i < objs[0].vertex_count; i++) {
+        double x = objs[0].vertices[i].x - center_x;
+        double y = objs[0].vertices[i].y - center_y;
+        double z = objs[0].vertices[i].z - center_z;
+        double new_x = x * cos(angle) + z * sin(angle);
+        double new_z = -x * sin(angle) + z * cos(angle);
+        objs[0].vertices[i].x = new_x + center_x;
+        objs[0].vertices[i].y = y + center_y;
+        objs[0].vertices[i].z = new_z + center_z;
+    }
+}
+
+void rotate_cube_z(double angle) {
+    double center_x = 0.0, center_y = 0.0, center_z = 50.0;
+    for (int i = 0; i < objs[0].vertex_count; i++) {
+        double x = objs[0].vertices[i].x - center_x;
+        double y = objs[0].vertices[i].y - center_y;
+        double z = objs[0].vertices[i].z - center_z;
+        double new_x = x * cos(angle) - y * sin(angle);
+        double new_y = x * sin(angle) + y * cos(angle);
+        objs[0].vertices[i].x = new_x + center_x;
+        objs[0].vertices[i].y = new_y + center_y;
+        objs[0].vertices[i].z = z + center_z;
+    }
 }
 
 vector2 projection(vector3 vertex) {
