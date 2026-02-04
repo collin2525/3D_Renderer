@@ -1,14 +1,35 @@
 #include "renderer.h"
+#include "string.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-object3d obj;
+object3d objs[10];
+int obj_count = 0;
 double fov = 10.0;
+int window_width = 800;
+int window_height = 600;
+
+void initialize_renderer(int width, int height, double fov_value) {
+    window_width = width;
+    window_height = height;
+    fov = fov_value;
+    double vertices[8][3] = {
+        {50.0, 50.0, 100.0}, {50.0, 50.0, 0.0}, {50.0, -50.0, 100.0}, {50.0, -50.0, 0.0},
+        {-50.0, 50.0, 100.0}, {-50.0, 50.0, 0.0}, {-50.0, -50.0, 100.0}, {-50.0, -50.0, 0.0}
+    };
+    int edges[12][2] = {
+        {0, 1}, {1, 3}, {3, 2}, {2, 0},  // front face
+        {4, 5}, {5, 7}, {7, 6}, {6, 4},  // back face
+        {0, 4}, {1, 5}, {2, 6}, {3, 7}   // connecting edges
+    };
+    create_object(vertices, 8, edges, 12, "cube");
+}
 
 void create_object(double (*vertices)[3], int vertex_count, int (*edges)[2], int edge_count, char* name) {
+    object3d obj;
     obj.vertex_count = vertex_count;
     obj.edge_count = edge_count;
-    obj.name = name;  // Added assignment for the name field
+    obj.name = string_create(name);  // Added assignment for the name field
 
     obj.vertices = (vector3*)malloc(sizeof(vector3) * vertex_count);
     for (int i = 0; i < vertex_count; i++) {
@@ -22,9 +43,24 @@ void create_object(double (*vertices)[3], int vertex_count, int (*edges)[2], int
         obj.edges[i].start = edges[i][0];
         obj.edges[i].end = edges[i][1];
     }
+    objs[obj_count] = obj; // For simplicity, store in the first slot
+    obj_count++;
 }
 
-double* get_projected_vertices(int* out_count) {
+double* get_projected_vertices(int* out_count, char* object_name) {
+    object3d obj;
+    int found = 0;
+    for (int i = 0; i < obj_count; i++) {
+        if (string_equals_cstr(&objs[i].name, object_name)) {
+            obj = objs[i];
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        *out_count = 0;
+        return NULL;
+    }
     *out_count = obj.edge_count * 4; // Each edge contributes 4 values (x1, y1, x2, y2)
     double* projected = (double*)malloc(sizeof(double) * (*out_count));
     int index = 0;
@@ -45,9 +81,36 @@ double* get_projected_vertices(int* out_count) {
     return projected;
 }
 
+int* get_edges(int* out_count, char* object_name) {
+    object3d obj;
+    int found = 0;
+    for (int i = 0; i < obj_count; i++) {
+        if (string_equals_cstr(&objs[i].name, object_name)) {
+            obj = objs[i];
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        *out_count = 0;
+        return NULL;
+    }
+    *out_count = obj.edge_count * 2; // Each edge has 2 vertices
+    int* edges_array = (int*)malloc(sizeof(int) * (*out_count));
+    int index = 0;
+
+    for (int i = 0; i < obj.edge_count; i++) {
+        edges_array[index++] = obj.edges[i].start;
+        edges_array[index++] = obj.edges[i].end;
+    }
+
+    return edges_array;
+}
+
 vector2 projection(vector3 vertex) {
     vector2 projected;
-    projected.x = (vertex.x / (vertex.z + fov)) * fov;
-    projected.y = (vertex.y / (vertex.z + fov)) * fov;
+    double factor = fov / (fov + vertex.z);
+    projected.x = vertex.x * factor + window_width / 2;
+    projected.y = -vertex.y * factor + window_height / 2;
     return projected;
 }
