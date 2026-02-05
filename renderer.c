@@ -23,13 +23,30 @@ void initialize_renderer(int width, int height, double fov_value) {
         {4, 5}, {5, 7}, {7, 6}, {6, 4},  // back face
         {0, 4}, {1, 5}, {2, 6}, {3, 7}   // connecting edges
     };
-    create_object(vertices, 8, edges, 12, "cube");
+    int faces[6][4] = {
+        {0, 1, 3, 2}, // front face
+        {4, 5, 7, 6}, // back face
+        {0, 1, 5, 4}, // top face
+        {2, 3, 7, 6}, // bottom face
+        {0, 2, 6, 4}, // left face
+        {1, 3, 7, 5}  // right face
+    };
+    vector3 face_colors[6] = {
+        {1.0, 0.0, 0.0}, // red
+        {0.0, 1.0, 0.0}, // green
+        {0.0, 0.0, 1.0}, // blue
+        {1.0, 1.0, 0.0}, // yellow
+        {1.0, 0.0, 1.0}, // magenta
+        {0.0, 1.0, 1.0}  // cyan
+    };
+    create_object(vertices, 8, edges, 12, faces, 6, "cube");
 }
 
-void create_object(double (*vertices)[3], int vertex_count, int (*edges)[2], int edge_count, char* name) {
+void create_object(double (*vertices)[3], int vertex_count, int (*edges)[2], int edge_count, int (*faces)[4], int face_count, char* name) {
     object3d obj;
     obj.vertex_count = vertex_count;
     obj.edge_count = edge_count;
+    obj.face_count = face_count;
     obj.name = string_create(name);  // Added assignment for the name field
 
     obj.vertices = (vector3*)malloc(sizeof(vector3) * vertex_count);
@@ -43,6 +60,13 @@ void create_object(double (*vertices)[3], int vertex_count, int (*edges)[2], int
     for (int i = 0; i < edge_count; i++) {
         obj.edges[i].start = edges[i][0];
         obj.edges[i].end = edges[i][1];
+    }
+    obj.faces = (face*)malloc(sizeof(face) * face_count);
+    for (int i = 0; i < face_count; i++) {
+        obj.faces[i].v1 = faces[i][0];
+        obj.faces[i].v2 = faces[i][1];
+        obj.faces[i].v3 = faces[i][2];
+        obj.faces[i].v4 = faces[i][3];
     }
     objs[obj_count] = obj; // For simplicity, store in the first slot
     obj_count++;
@@ -106,6 +130,77 @@ int* get_edges(int* out_count, char* object_name) {
     }
 
     return edges_array;
+}
+
+double* get_face_projections(int* out_count, char* object_name) {
+    object3d obj;
+    int found = 0;
+    for (int i = 0; i < obj_count; i++) {
+        if (string_equals_cstr(&objs[i].name, object_name)) {
+            obj = objs[i];
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        *out_count = 0;
+        return NULL;
+    }
+    *out_count = obj.face_count * 8; // Each face has 4 vertices, each vertex has x and y
+    double* projected = (double*)malloc(sizeof(double) * (*out_count));
+    int index = 0;
+
+    for (int i = 0; i < obj.face_count; i++) {
+        face f = obj.faces[i];
+        vector3 v1 = obj.vertices[f.v1];
+        vector3 v2 = obj.vertices[f.v2];
+        vector3 v3 = obj.vertices[f.v3];
+        vector3 v4 = obj.vertices[f.v4];
+
+        vector2 p1 = projection(v1);
+        vector2 p2 = projection(v2);
+        vector2 p3 = projection(v3);
+        vector2 p4 = projection(v4);
+
+        projected[index++] = p1.x;
+        projected[index++] = p1.y;
+        projected[index++] = p2.x;
+        projected[index++] = p2.y;
+        projected[index++] = p3.x;
+        projected[index++] = p3.y;
+        projected[index++] = p4.x;
+        projected[index++] = p4.y;
+    }
+
+    return projected;
+}
+
+double* get_face_colors(int* out_count, char* object_name) {
+    object3d obj;
+    int found = 0;
+    for (int i = 0; i < obj_count; i++) {
+        if (string_equals_cstr(&objs[i].name, object_name)) {
+            obj = objs[i];
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        *out_count = 0;
+        return NULL;
+    }
+    *out_count = obj.face_count * 3; // Each face has 3 color components (r, g, b)
+    double* colors = (double*)malloc(sizeof(double) * (*out_count));
+    int index = 0;
+
+    for (int i = 0; i < obj.face_count; i++) {
+        vector3 c = obj.faces[i].color;
+        colors[index++] = c.x;
+        colors[index++] = c.y;
+        colors[index++] = c.z;
+    }
+
+    return colors;
 }
 
 void rotate_cube_x(double angle) {
